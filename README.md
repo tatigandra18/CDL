@@ -1,4 +1,4 @@
-# Este repositório pertence ao Centro de Desenvolvimento de Liderança
+# Centro de Desenvolvimento de Liderança
 
 ## Inteli - Instituto de Tecnologia e Liderança 
 
