@@ -40,8 +40,8 @@ driver.get('https://www.glassdoor.com.br/index.htm')
 
 
 #Credenciais de entrada
-usuario = 'mottadavi41@gmail.com'
-senha = '23022005'
+usuario = ''
+senha = ''
 
 
 #Preenchendo o campo de email e passando para o campo de senha
