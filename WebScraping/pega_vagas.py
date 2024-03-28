@@ -40,24 +40,38 @@ driver.get('https://www.glassdoor.com.br/index.htm')
 
 
 #Credenciais de entrada
-usuario = ''
-senha = ''
+usuario = 'azevedogandratatiane@gmail.com'
+senha = 'tati24Xumf'
 
 
-#Preenchendo o campo de email e passando para o campo de senha
-campo_usuario = driver.find_element(By.XPATH, '//*[@id="inlineUserEmail"]')
-campo_usuario.send_keys(usuario)
-enviar = driver.find_element(By.XPATH, '//*[@id="InlineLoginModule"]/div/div/div[1]/div/div/div/div/form/div[2]/button')
-#Apertando o botão enter
-enviar.click()
-time.sleep(3)
+try:
+    # Preencher o campo de e-mail
+    campo_usuario = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.XPATH, '//*[@id="inlineUserEmail"]'))
+    )
+    campo_usuario.send_keys(usuario)
+
+    # Esperar até que o botão esteja clicável e então clicar nele
+    enviar = driver.find_element(By.XPATH, '//*[@id="InlineLoginModule"]/div/div[1]/div/div/div/div/form/div[2]/button')
+    print("abaixo de enviar")
+    # Clicar no botão
+    enviar.click()
+    print("abaixo de clicar")
+
+    print("Botão 'Entrar com e-mail' clicado.")
+
+    # Esperar alguns segundos para a próxima ação
+    time.sleep(3)
+
+except Exception as e:
+    print("Erro:", e)
 
 
 #Preenchendo o campo de senha e efetuando o login
 campo_senha = driver.find_element(By.XPATH, '//*[@id="inlineUserPassword"]')
 campo_senha.send_keys(senha)
 #Apertando o botão enter
-enviar = driver.find_element(By.XPATH, '//*[@id="InlineLoginModule"]/div/div/div[1]/div/div/div/div/form/div[4]/button')
+enviar = driver.find_element(By.XPATH, '//*[@id="InlineLoginModule"]/div/div[1]/div/div/div/div/form/div[2]/button')
 enviar.click()
 time.sleep(5)
 
@@ -134,7 +148,7 @@ while True:
         #caso não seja possivel entrar no card isto é executado para evitar erros quando o programa chegar ao fim das vagas
         except:
             #Informa qual card não é clicável
-            print(f"Card is not clickable at job opportujity:  {contador_vaga}")
+            print(f"Card is not clickable at job opportunity:  {contador_vaga}")
             
             #A variavel de controle é inicialmente False, para que rode mais uma vez e verifique que realmente é o último 
             if card_not_found:
@@ -147,7 +161,7 @@ while True:
         
         #Tenta Encontrar o cargo
         try:
-            vaga['Funcao'] = driver.find_element(By.CLASS_NAME, 'JobDetails_jobTitle__Rw_gn').text
+            vaga['Funcao'] = driver.find_element(By.CLASS_NAME, 'heading_Heading__BqX5J heading_Level1__soLZs').text
         #Caso não ache imprime uma mensagem 
         except:
             print('Function not found')
@@ -155,7 +169,7 @@ while True:
         
         #Tenta encontrar a localização
         try:
-            vaga['Localização'] = driver.find_element(By.CLASS_NAME, 'JobDetails_location__MbnUM').text
+            vaga['Localização'] = driver.find_element(By.CLASS_NAME, 'JobDetails_location__mSg5h').text
         
         #Caso não ache imprime uma mensagem 
         except:
@@ -167,7 +181,7 @@ while True:
         if secao_vaga_lista:
             secao_vaga = driver.find_element(By.XPATH, '//*[@id="app-navigation"]/div[3]/div/div[2]/div/header/div[1]')
             #A partir da seção buscamos o nome da empresa - que vem acompanhada de avaliação
-            vaga['Empresa'] = secao_vaga.find_element(By.CSS_SELECTOR, '.EmployerProfile_employerInfo__GaPbq').text
+            vaga['Empresa'] = secao_vaga.find_element(By.CSS_SELECTOR, '.EmployerProfile_employerInfo__d8uSE').text
 
             #Descobrindo o ID da data de maneira dinâmica
             xpath_data = '//*[@id="left-column"]/div[2]/ul/li[' +str(contador_vaga) + ']/div/div/div[1]/div[2]'
@@ -178,7 +192,7 @@ while True:
         
         #Tenta encontrar a descrição
         try:
-            vaga['Skills Necessarias'] = driver.find_element(By.CLASS_NAME, 'JobDetails_jobDescriptionWrapper__BTDTA').text
+            vaga['Skills Necessarias'] = driver.find_element(By.CLASS_NAME, 'JobDetails_jobDescription__uW_fK JobDetails_showHidden__C_FOA').text
             
         #Caso não ache imprime uma mensagem
         except: 
