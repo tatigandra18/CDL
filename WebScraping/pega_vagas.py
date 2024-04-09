@@ -71,7 +71,7 @@ except Exception as e:
 campo_senha = driver.find_element(By.XPATH, '//*[@id="inlineUserPassword"]')
 campo_senha.send_keys(senha)
 #Apertando o botão enter
-enviar = driver.find_element(By.XPATH, '//*[@id="InlineLoginModule"]/div/div[1]/div/div/div/div/form/div[2]/button')
+enviar = driver.find_element(By.XPATH, '//*[@id="InlineLoginModule"]/div/div[1]/div/div/div/div/form/div[4]/button')
 enviar.click()
 time.sleep(5)
 
