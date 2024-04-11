@@ -85,7 +85,7 @@ vagas= []
 #ALETERE AQUI - Digite a função (categoria) e a região(estado) da busca
 ###########################        
 categoria = "Developer" ###
-estado = "Minas Gerais" ###
+estado = "Brasil" ###
 ###########################
 
 
@@ -161,7 +161,7 @@ while True:
         
         #Tenta Encontrar o cargo
         try:
-            vaga['Funcao'] = driver.find_element(By.CLASS_NAME, 'heading_Heading__BqX5J heading_Level1__soLZs').text
+            vaga['Funcao'] = driver.find_element(By.CLASS_NAME, 'JobDetails_jobDetailsHeader__Hd9M3').text
         #Caso não ache imprime uma mensagem 
         except:
             print('Function not found')
@@ -192,7 +192,7 @@ while True:
         
         #Tenta encontrar a descrição
         try:
-            vaga['Skills Necessarias'] = driver.find_element(By.CLASS_NAME, 'JobDetails_jobDescription__uW_fK JobDetails_showHidden__C_FOA').text
+            vaga['Skills Necessarias'] = driver.find_element(By.CLASS_NAME, 'JobDetails_jobDetailsSection__y_xa6').text
             
         #Caso não ache imprime uma mensagem
         except: 
@@ -203,7 +203,7 @@ while True:
 
         #Tenta encontrar o salario
         try:
-            salario = driver.find_element(By.XPATH, '//*[@id="app-navigation"]/div[3]/div[2]/div[2]/div/section/section/div/div[2]/div[1]/div[1]')
+            salario = driver.find_element(By.XPATH, '//*[@id="app-navigation"]/div[3]/div[2]/div[2]/div/div[1]/section/section[1]/div/div[1]/div[1]/div[2]')
             
             vaga['Média Salarial'] = salario.text
             
