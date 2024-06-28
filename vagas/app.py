@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import matplotlib.pyplot as plt
+import requests
+from io import StringIO
 from collections import Counter
 
 # Lista de URLs dos arquivos CSV no GitHub
