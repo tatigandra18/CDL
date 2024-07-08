@@ -16,6 +16,14 @@ urls = [
     'https://raw.githubusercontent.com/tatigandra18/CDL/main/vagas/arquivo_correto5.csv'
 ]
 
+urls_2 =[
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_part1.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_part2.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_part3.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_part4.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_part5.csv',
+] 
+
 # Função para ler e combinar os arquivos CSV
 def load_and_combine_csvs(urls):
     dataframes = []
@@ -27,6 +35,9 @@ def load_and_combine_csvs(urls):
 
 # Carregar e combinar os arquivos CSV
 df_tech = load_and_combine_csvs(urls)
+df_nao_rotulados = load_and_combine_csvs(urls_2)
+
+df_merged = pd.merge(df_tech, df_nao_rotulados[['Localização', 'Skills Necessarias', 'Média Salarial', 'Cargo', 'ver_cargo', 'palavra_chave', 'Nome Vaga Normalizado']], on=['Localização', 'Skills Necessarias', 'Média Salarial', 'Cargo', 'ver_cargo', 'palavra_chave'], how='left')
 
 # Criar guias
 titulos_guias = ['Pesquisa','Etapas','Análises', 'Próximos passos']
@@ -208,6 +219,55 @@ with guia1:
             fig5 = px.bar(contagem_inicio_carreira, x='Área', y='Quantidade',
               labels={'Quantidade': 'Quantidade de Vagas', 'Área': 'Áreas'})
             st.plotly_chart(fig5)
+
+            # Analisar as áreas e cargos
+            area_cargo_count = df_merged.groupby(['Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
+
+            # Lista suspensa para selecionar a área
+            areas = area_cargo_count['Área'].unique()
+            area_selecionada = st.selectbox('Selecione a Área', areas)
+
+            # Filtrar dados para a área selecionada
+            df_area_selecionada = area_cargo_count[area_cargo_count['Área'] == area_selecionada].sort_values(by='counts', ascending=False).head(10)
+
+            # Criar gráfico para a área selecionada
+            fig_area_selecionada = px.bar(
+                df_area_selecionada,
+                x='Nome Vaga Normalizado',
+                y='counts',
+                title=f'Cargos na Área: {area_selecionada}',
+                labels={'counts': 'Número de Vagas', 'Nome Vaga Normalizado': 'Cargo'},
+                template='plotly_white'
+            )
+            fig_area_selecionada.update_layout(xaxis_tickangle=-45)
+
+            # Exibir o gráfico
+            st.plotly_chart(fig_area_selecionada)
+
+            # Analisar as vagas de início de carreira
+            df_inicio_carreira = df_merged[df_merged['momento_carreira'] == 'inicio de carreira']  # Certifique-se de que o filtro está correto
+            area_inicio_carreira_count = df_inicio_carreira.groupby(['Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
+
+            # Lista suspensa para selecionar a área para vagas de início de carreira
+            st.header('Vagas de Início de Carreira por Área')
+            area_selecionada_inicio_carreira = st.selectbox('Selecione a Área', areas, key='inicio_carreira')
+
+            # Filtrar dados para a área selecionada
+            df_area_inicio_carreira_selecionada = area_inicio_carreira_count[area_inicio_carreira_count['Área'] == area_selecionada_inicio_carreira].sort_values(by='counts', ascending=False).head(10)
+
+            # Criar gráfico para a área selecionada de início de carreira
+            fig_area_inicio_carreira_selecionada = px.bar(
+                df_area_inicio_carreira_selecionada,
+                x='Nome Vaga Normalizado',
+                y='counts',
+                title=f'Vagas de Início de Carreira na Área: {area_selecionada_inicio_carreira}',
+                labels={'counts': 'Número de Vagas', 'Nome Vaga Normalizado': 'Cargo'},
+                template='plotly_white'
+            )
+            fig_area_inicio_carreira_selecionada.update_layout(xaxis_tickangle=-45)
+
+            # Exibir o gráfico
+            st.plotly_chart(fig_area_inicio_carreira_selecionada)
 
             with guia4:
 
