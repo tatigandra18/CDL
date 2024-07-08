@@ -220,6 +220,9 @@ with guia1:
               labels={'Quantidade': 'Quantidade de Vagas', 'Área': 'Áreas'})
             st.plotly_chart(fig5)
 
+            df_merged = df_merged[df_merged['Nome Vaga Normalizado'] != 'Indefinido']
+            df_merged = df_merged[df_merged['Área'] != 'Indefinida']
+
             # Analisar as áreas e cargos
             area_cargo_count = df_merged.groupby(['Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
 
@@ -268,6 +271,25 @@ with guia1:
 
             # Exibir o gráfico
             st.plotly_chart(fig_area_inicio_carreira_selecionada)
+
+            # Analisar os 20 cargos mais recorrentes sem distinção de áreas
+            st.header('20 Cargos Mais Recorrentes')
+            cargo_count = df_merged['Nome Vaga Normalizado'].value_counts().reset_index().head(20)
+            cargo_count.columns = ['Nome Vaga Normalizado', 'counts']
+
+            # Criar gráfico para os 20 cargos mais recorrentes
+            fig_cargos_recorrentes = px.bar(
+                cargo_count,
+                x='Nome Vaga Normalizado',
+                y='counts',
+                title='20 Cargos Mais Recorrentes',
+                labels={'counts': 'Número de Vagas', 'Nome Vaga Normalizado': 'Cargo'},
+                template='plotly_white'
+            )
+            fig_cargos_recorrentes.update_layout(xaxis_tickangle=-45)
+
+            # Exibir o gráfico
+            st.plotly_chart(fig_cargos_recorrentes)
 
             with guia4:
 
