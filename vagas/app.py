@@ -24,20 +24,46 @@ urls_2 =[
     'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_part5.csv',
 ] 
 
-# Função para ler e combinar os arquivos CSV
-def load_and_combine_csvs(urls):
+urls_3 =[
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_com_macro_area1.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_com_macro_area2.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_com_macro_area3.csv',
+    'https://github.com/tatigandra18/CDL/raw/main/vagas/vagas_classificadas_com_macro_area4.csv',
+] 
+
+
+def load_and_combine_csvs_chunked(urls):
     dataframes = []
     for url in urls:
-        df = pd.read_csv(url)
-        dataframes.append(df)
+        try:
+            chunk_iter = pd.read_csv(
+                url, 
+                chunksize=1000,  # Lê o arquivo em pedaços de 1000 linhas
+                encoding='utf-8',
+                on_bad_lines='skip'  # Ignora as linhas problemáticas
+            )
+            for chunk in chunk_iter:
+                dataframes.append(chunk)
+            print(f"Arquivo carregado com sucesso: {url}")
+        except pd.errors.ParserError as e:
+            print(f"Erro ao processar o arquivo {url}: {e}")
+        except Exception as e:
+            print(f"Erro inesperado ao processar o arquivo {url}: {e}")
+    
+    if not dataframes:
+        raise ValueError("Nenhum arquivo foi carregado com sucesso. Verifique os URLs ou a integridade dos arquivos.")
+    
     combined_df = pd.concat(dataframes, ignore_index=True)
     return combined_df
 
-# Carregar e combinar os arquivos CSV
-df_tech = load_and_combine_csvs(urls)
-df_nao_rotulados = load_and_combine_csvs(urls_2)
 
-df_merged = pd.merge(df_tech, df_nao_rotulados[['Localização', 'Skills Necessarias', 'Média Salarial', 'Cargo', 'ver_cargo', 'palavra_chave', 'Nome Vaga Normalizado']], on=['Localização', 'Skills Necessarias', 'Média Salarial', 'Cargo', 'ver_cargo', 'palavra_chave'], how='left')
+# Carregar e combinar os arquivos CSV
+df_tech = load_and_combine_csvs_chunked(urls)
+df_nao_rotulados = load_and_combine_csvs_chunked(urls_2)
+
+df_classificado = load_and_combine_csvs_chunked(urls_3)
+
+df_merged = pd.merge(df_tech, df_classificado[['Localização', 'Skills Necessarias', 'Média Salarial', 'Cargo', 'ver_cargo', 'palavra_chave', 'Nome Vaga Normalizado', 'Área Normalizada', 'Macro Área']], on=['Localização', 'Skills Necessarias', 'Média Salarial', 'Cargo', 'ver_cargo', 'palavra_chave'], how='left')
 
 # Criar guias
 titulos_guias = ['Pesquisa','Etapas','Análises', 'Próximos passos']
@@ -110,7 +136,8 @@ with guia1:
             st.subheader('Áreas com mais vagas')
 
             contagem_areas_individual = Counter()
-            for areas in df_tech['macro_area']:
+            for areas in df_classificado['Macro Área']:
+                areas = str(areas) if not pd.isna(areas) else ""
                 for area in areas.split(', '):
                     contagem_areas_individual[area] += 1
 
@@ -118,6 +145,8 @@ with guia1:
                 del contagem_areas_individual['Indefinida']
             # Converter o contador para um DataFrame
             df_contagem_areas = pd.DataFrame(contagem_areas_individual.items(), columns=['Área', 'Quantidade'])
+
+            df_contagem_areas = df_contagem_areas[df_contagem_areas['Área'] != ""]
 
             # Calcular percentual
             total = df_contagem_areas['Quantidade'].sum()
@@ -139,7 +168,7 @@ with guia1:
 
             st.subheader("Tipos de cargos que mais aparecem")
             # Contabilizar combinações de áreas
-            contagem_combinacoes_tipo_cargo = Counter(df_tech['tipo_cargo'])
+            contagem_combinacoes_tipo_cargo = Counter(df_merged['tipo_cargo'])
 
             # Converter o contador para um DataFrame
             df_contagem_combinacoes_tipo_cargo = pd.DataFrame(contagem_combinacoes_tipo_cargo.items(), columns=['Combinação de Áreas', 'Quantidade'])
@@ -165,7 +194,7 @@ with guia1:
             st.subheader("Quantidade de cargos iniciais")
 
             # Contabilizar combinações de áreas
-            contagem_combinacoes_momento_carreira = Counter(df_tech['momento_carreira'])
+            contagem_combinacoes_momento_carreira = Counter(df_merged['momento_carreira'])
 
             # Converter o contador para um DataFrame
             df_contagem_combinacoes_momento_carreira = pd.DataFrame(contagem_combinacoes_momento_carreira.items(), columns=['Combinação de Áreas', 'Quantidade'])
@@ -191,7 +220,7 @@ with guia1:
 
             st.subheader("Quantidade de cargos iniciais por área")
 
-            df_tech = df_tech.assign(Área=df_tech['macro_area'].str.split(', ')).explode('Área')
+            df_merged = df_merged.assign(Área=df_merged['Macro Área'].str.split(', ')).explode('Área')
 
             # Filtrar os dados para vagas em início de carreira e não início de carreira
             df_inicio_carreira = df_tech[df_tech['momento_carreira'] == 'inicio de carreira']
@@ -221,17 +250,17 @@ with guia1:
             st.plotly_chart(fig5)
 
             df_merged = df_merged[df_merged['Nome Vaga Normalizado'] != 'Indefinido']
-            df_merged = df_merged[df_merged['Área'] != 'Indefinida']
+            df_merged = df_merged[df_merged['Macro Área'] != 'Indefinida']
 
             # Analisar as áreas e cargos
-            area_cargo_count = df_merged.groupby(['Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
+            area_cargo_count = df_merged.groupby(['Macro Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
 
             # Lista suspensa para selecionar a área
-            areas = area_cargo_count['Área'].unique()
+            areas = area_cargo_count['Macro Área'].unique()
             area_selecionada = st.selectbox('Selecione a Área', areas)
 
             # Filtrar dados para a área selecionada
-            df_area_selecionada = area_cargo_count[area_cargo_count['Área'] == area_selecionada].sort_values(by='counts', ascending=False).head(10)
+            df_area_selecionada = area_cargo_count[area_cargo_count['Macro Área'] == area_selecionada].sort_values(by='counts', ascending=False).head(10)
 
             # Criar gráfico para a área selecionada
             fig_area_selecionada = px.bar(
@@ -249,14 +278,14 @@ with guia1:
 
             # Analisar as vagas de início de carreira
             df_inicio_carreira = df_merged[df_merged['momento_carreira'] == 'inicio de carreira']  # Certifique-se de que o filtro está correto
-            area_inicio_carreira_count = df_inicio_carreira.groupby(['Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
+            area_inicio_carreira_count = df_inicio_carreira.groupby(['Macro Área', 'Nome Vaga Normalizado']).size().reset_index(name='counts')
 
             # Lista suspensa para selecionar a área para vagas de início de carreira
             st.header('Vagas de Início de Carreira por Área')
             area_selecionada_inicio_carreira = st.selectbox('Selecione a Área', areas, key='inicio_carreira')
 
             # Filtrar dados para a área selecionada
-            df_area_inicio_carreira_selecionada = area_inicio_carreira_count[area_inicio_carreira_count['Área'] == area_selecionada_inicio_carreira].sort_values(by='counts', ascending=False).head(10)
+            df_area_inicio_carreira_selecionada = area_inicio_carreira_count[area_inicio_carreira_count['Macro Área'] == area_selecionada_inicio_carreira].sort_values(by='counts', ascending=False).head(10)
 
             # Criar gráfico para a área selecionada de início de carreira
             fig_area_inicio_carreira_selecionada = px.bar(
