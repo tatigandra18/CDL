@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Função para carregar os dados e calcular as médias
-def load_and_prepare_data(file_path):
-    data = pd.read_csv(file_path)
+# Função para carregar e preparar os dados
+def load_and_prepare_data(url):
+    data = pd.read_csv(url)
     columns_clan = [col for col in data.columns if 'Clã' in col]
     columns_adhocracy = [col for col in data.columns if 'Adhocracia' in col]
     columns_market = [col for col in data.columns if 'Mercado' in col]
@@ -13,7 +13,6 @@ def load_and_prepare_data(file_path):
     
     clean_data = data.iloc[1:]  # Ignorar a primeira linha de textos explicativos
     
-    # Calcular as médias para as percepções atuais e desejadas
     clean_data['Clã_atual'] = clean_data[columns_clan[0:6]].astype(float).mean(axis=1)
     clean_data['Adhocracia_atual'] = clean_data[columns_adhocracy[0:6]].astype(float).mean(axis=1)
     clean_data['Mercado_atual'] = clean_data[columns_market[0:6]].astype(float).mean(axis=1)
@@ -26,17 +25,15 @@ def load_and_prepare_data(file_path):
     
     return clean_data
 
-# Função para criar gráfico de radar com duas séries
+# Função para criar gráfico de radar
 def radar_chart(culture_current, culture_desired, labels, title):
     num_vars = len(labels)
     angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
 
-    # Repetir o primeiro valor para fechar o gráfico
     culture_current += culture_current[:1]
     culture_desired += culture_desired[:1]
     angles += angles[:1]
 
-    # Plotar o gráfico
     fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
     ax.fill(angles, culture_current, color='blue', alpha=0.25, label='Atual')
     ax.plot(angles, culture_current, color='blue', linewidth=2)
@@ -51,9 +48,12 @@ def radar_chart(culture_current, culture_desired, labels, title):
 
     st.pyplot(fig)
 
-# Carregar os dados
-file_path = 'Censo estágios 2024.2 (Responses) - Cultura.csv'
-data = load_and_prepare_data(file_path)
+
+# URL do arquivo raw no GitHub
+file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/OCAI/censo-estagios-2024-2.csv'
+
+# Carregar e preparar os dados
+data = load_and_prepare_data(file_url)
 
 # Título do app
 st.title('Análise de Cultura Organizacional')
