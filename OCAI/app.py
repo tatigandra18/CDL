@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 # Função para carregar e preparar os dados
 def load_and_prepare_data(url):
@@ -25,29 +25,49 @@ def load_and_prepare_data(url):
     
     return clean_data
 
-# Função para criar gráfico de radar
-def radar_chart(culture_current, culture_desired, labels, title):
-    num_vars = len(labels)
-    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+# Função para calcular desvios padrões
+def calculate_z_scores(data, columns):
+    mean_values = data[columns].mean()
+    std_values = data[columns].std()
+    
+    z_scores = (data[columns] - mean_values) / std_values
+    return z_scores
 
-    culture_current += culture_current[:1]
-    culture_desired += culture_desired[:1]
-    angles += angles[:1]
+# Função para criar gráfico de radar com plotly
+def radar_chart(z_scores_current, z_scores_desired, labels, title):
+    fig = go.Figure()
 
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-    ax.fill(angles, culture_current, color='blue', alpha=0.25, label='Atual')
-    ax.plot(angles, culture_current, color='blue', linewidth=2)
+    # Plotando os z-scores atuais
+    fig.add_trace(go.Scatterpolar(
+        r=z_scores_current + z_scores_current[:1],  # Fechando o loop
+        theta=labels + [labels[0]],  # Fechando o loop
+        fill='toself',
+        name='Atual',
+        line=dict(color='blue')
+    ))
 
-    ax.fill(angles, culture_desired, color='green', alpha=0.25, label='Desejado')
-    ax.plot(angles, culture_desired, color='green', linewidth=2)
+    # Plotando os z-scores desejados
+    fig.add_trace(go.Scatterpolar(
+        r=z_scores_desired + z_scores_desired[:1],  # Fechando o loop
+        theta=labels + [labels[0]],  # Fechando o loop
+        fill='toself',
+        name='Desejado',
+        line=dict(color='green')
+    ))
 
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels)
-    plt.legend(loc='upper right')
-    plt.title(title, size=20, color='blue', y=1.1)
+    # Configurações do layout
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[-3, 3], dtick=0.5)
+        ),
+        showlegend=True,
+        title=title
+    )
 
-    st.pyplot(fig)
+    st.plotly_chart(fig)
 
+# Título do app
+st.title('Análise de Cultura Organizacional com Z-Scores usando Plotly')
 
 # URL do arquivo raw no GitHub
 file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/OCAI/censo-estagios-2024-2.csv'
@@ -55,54 +75,59 @@ file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/O
 # Carregar e preparar os dados
 data = load_and_prepare_data(file_url)
 
-# Título do app
-st.title('Análise de Cultura Organizacional')
+# Calcular z-scores para cada dimensão
+columns_current = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
+columns_desired = ['Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']
 
-# Filtros
-empresas = st.selectbox("Selecione a Empresa", data['Empresas'].unique())
-funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == empresas]['Unnamed: 0'])
+z_scores_current = calculate_z_scores(data, columns_current)
+z_scores_desired = calculate_z_scores(data, columns_desired)
 
-# Filtrar os dados
-filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
+# Implementando as abas
+tab1, tab2 = st.tabs(["Análise Individual", "Comparação entre Empresas"])
 
-if not filtro.empty:
-    # Valores de cultura para gráfico
-    culture_current = [
-        filtro.iloc[0]['Clã_atual'], 
-        filtro.iloc[0]['Adhocracia_atual'], 
-        filtro.iloc[0]['Mercado_atual'], 
-        filtro.iloc[0]['Hierarquia_atual']
-    ]
-    
-    culture_desired = [
-        filtro.iloc[0]['Clã_desejado'], 
-        filtro.iloc[0]['Adhocracia_desejado'], 
-        filtro.iloc[0]['Mercado_desejado'], 
-        filtro.iloc[0]['Hierarquia_desejado']
-    ]
-    
-    labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
-    title = f"Cultura Organizacional - {empresas}"
+# Aba 1: Análise Individual
+with tab1:
+    st.subheader('Análise por Empresa e Funcionário')
 
-    radar_chart(culture_current, culture_desired, labels, title)
+    # Filtros
+    empresas = st.selectbox("Selecione a Empresa", data['Empresas'].unique())
+    funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == empresas]['Unnamed: 0'])
 
-# Exibir gráfico geral para empresa
-st.subheader('Média Geral da Empresa')
+    # Filtrar os dados
+    filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
 
-empresa_filtro = data[data['Empresas'] == empresas]
-if not empresa_filtro.empty:
-    culture_current_avg = [
-        empresa_filtro['Clã_atual'].mean(),
-        empresa_filtro['Adhocracia_atual'].mean(),
-        empresa_filtro['Mercado_atual'].mean(),
-        empresa_filtro['Hierarquia_atual'].mean()
-    ]
-    
-    culture_desired_avg = [
-        empresa_filtro['Clã_desejado'].mean(),
-        empresa_filtro['Adhocracia_desejado'].mean(),
-        empresa_filtro['Mercado_desejado'].mean(),
-        empresa_filtro['Hierarquia_desejado'].mean()
-    ]
-    
-    radar_chart(culture_current_avg, culture_desired_avg, labels, f"Média Geral - {empresas}")
+    if not filtro.empty:
+        # Pegar z-scores para o funcionário selecionado
+        z_scores_current_funcionario = z_scores_current.loc[filtro.index].values.flatten().tolist()
+        z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
+        
+        labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
+        title = f"Cultura Organizacional - {empresas} (Z-Scores)"
+
+        radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title)
+
+    # Exibir gráfico geral para empresa
+    st.subheader('Diferença em Z-Scores - Média Geral da Empresa')
+
+    empresa_filtro = data[data['Empresas'] == empresas]
+    if not empresa_filtro.empty:
+        z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
+        z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
+        
+        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores)")
+
+# Aba 2: Comparação entre Empresas
+with tab2:
+    st.subheader('Comparação entre Empresas')
+
+    empresas_unicas = data['Empresas'].unique()
+
+    for empresa in empresas_unicas:
+        empresa_filtro = data[data['Empresas'] == empresa]
+        
+        if not empresa_filtro.empty:
+            z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
+            z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
+            
+            st.markdown(f"### {empresa}")
+            radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores)")
