@@ -95,11 +95,12 @@ with tab1:
     st.subheader('Análise por Empresa e Funcionário')
 
     # Filtros
-    empresas = st.selectbox("Selecione a Empresa", data['Empresas'].unique())
-    funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == empresas]['Unnamed: 0'])
+    empresas = sorted(data['Empresas'].unique())  # Ordena as empresas em ordem alfabética
+    selected_empresa = st.selectbox("Selecione a Empresa", empresas)
+    funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == selected_empresa]['Unnamed: 0'])
 
     # Filtrar os dados
-    filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
+    filtro = data[(data['Empresas'] == selected_empresa) & (data['Unnamed: 0'] == funcionarios)]
 
     if not filtro.empty:
         # Pegar z-scores para o funcionário selecionado
@@ -107,25 +108,25 @@ with tab1:
         z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
         
         labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
-        title = f"Cultura Organizacional - {empresas} (Z-Scores Globais)"
+        title = f"Cultura Organizacional - {selected_empresa} (Z-Scores Globais)"
 
         radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title)
 
     # Exibir gráfico geral para empresa
     st.subheader('Diferença em Z-Scores - Média Geral da Empresa')
 
-    empresa_filtro = data[data['Empresas'] == empresas]
+    empresa_filtro = data[data['Empresas'] == selected_empresa]
     if not empresa_filtro.empty:
         z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
         z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
         
-        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores Globais)")
+        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {selected_empresa} (Z-Scores Globais)")
 
 # Aba 2: Comparação entre Empresas
 with tab2:
     st.subheader('Comparação entre Empresas')
 
-    empresas_unicas = data['Empresas'].unique()
+    empresas_unicas = sorted(data['Empresas'].unique())  # Ordena as empresas em ordem alfabética
 
     for empresa in empresas_unicas:
         empresa_filtro = data[data['Empresas'] == empresa]
