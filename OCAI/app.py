@@ -26,16 +26,16 @@ def load_and_prepare_data(url):
     
     return clean_data
 
-# Função para calcular desvios padrões globais
-def calculate_z_scores_global(data, columns):
-    overall_mean = data[columns].mean().mean()
-    overall_std = data[columns].stack().std()
+# Função para calcular desvios padrões
+def calculate_z_scores(data, columns):
+    mean_values = data[columns].mean()
+    std_values = data[columns].std()
     
-    z_scores = (data[columns] - overall_mean) / overall_std
+    z_scores = (data[columns] - mean_values) / std_values
     return z_scores
 
 # Função para criar gráfico de radar com tamanho e margens ajustadas
-def radar_chart(z_scores_current, z_scores_desired, labels, title):
+def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
     fig = go.Figure()
 
     fig.add_trace(go.Scatterpolar(
@@ -65,10 +65,11 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title):
         margin=dict(l=100, r=100, t=100, b=100)  # Ajuste das margens para evitar corte dos rótulos
     )
     
-    st.plotly_chart(fig)
+    # Passar a chave única no st.plotly_chart
+    st.plotly_chart(fig, use_container_width=True, key=key)
 
 # Título do app
-st.title('Análise de Cultura Organizacional com Z-Scores Globais')
+st.title('Análise de Cultura Organizacional com Z-Scores')
 
 # URL do arquivo raw no GitHub
 file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/OCAI/censo-estagios-2024-2.csv'
@@ -76,12 +77,12 @@ file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/O
 # Carregar e preparar os dados
 data = load_and_prepare_data(file_url)
 
-# Calcular z-scores globais para cada dimensão
+# Calcular z-scores para cada dimensão
 columns_current = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
 columns_desired = ['Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']
 
-z_scores_current = calculate_z_scores_global(data, columns_current)
-z_scores_desired = calculate_z_scores_global(data, columns_desired)
+z_scores_current = calculate_z_scores(data, columns_current)
+z_scores_desired = calculate_z_scores(data, columns_desired)
 
 # Implementando as abas
 tab1, tab2, tab3 = st.tabs(["Análise Individual", "Comparação entre Empresas", "Maiores Índices"])
@@ -103,9 +104,9 @@ with tab1:
         z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
         
         labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
-        title = f"Cultura Organizacional - {empresas} (Z-Scores Globais)"
+        title = f"Cultura Organizacional - {empresas} (Z-Scores)"
 
-        radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title)
+        radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title, key="radar_individual")
 
     # Exibir gráfico geral para empresa
     st.subheader('Diferença em Z-Scores - Média Geral da Empresa')
@@ -115,7 +116,7 @@ with tab1:
         z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
         z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
         
-        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores Globais)")
+        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores)", key="radar_empresa")
 
 # Aba 2: Comparação entre Empresas
 with tab2:
@@ -123,7 +124,7 @@ with tab2:
 
     empresas_unicas = sorted(data['Empresas'].unique())
 
-    for empresa in empresas_unicas:
+    for i, empresa in enumerate(empresas_unicas):
         empresa_filtro = data[data['Empresas'] == empresa]
         
         if not empresa_filtro.empty:
@@ -131,21 +132,22 @@ with tab2:
             z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
             
             st.markdown(f"### {empresa}")
-            radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores Globais)")
+            radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores Globais)", key=f"radar_chart_{i}")
 
 # Aba 3: Maiores Índices
 with tab3:
-    st.subheader("Maiores Índices por Elemento")
-    
-    elementos = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
+    st.subheader('Top 10 Empresas com Maiores Índices')
 
-    for elemento in elementos:
-        maiores_empresas = data.groupby('Empresas')[elemento].mean().nlargest(10)
+    elements = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
+    for element in elements:
+        top_10 = data.groupby('Empresas')[element].mean().nlargest(10)
         
-        fig = px.bar(maiores_empresas, x=maiores_empresas.index, y=maiores_empresas.values,
-                     labels={'x': 'Empresas', 'y': f'Média de {elemento}'},
-                     title=f'Maiores Índices de {elemento} (Atual)')
+        fig = px.bar(top_10, x=top_10.index, y=top_10.values, labels={'y': 'Média', 'x': 'Empresa'},
+                     title=f'Top 10 Empresas com Maiores Índices de {element.split("_")[0]}')
+
+        fig.update_layout(
+            width=800,  # Ajuste do tamanho do gráfico de barras
+            height=500
+        )
         
-        fig.update_layout(width=900, height=500)  # Padronização do tamanho dos gráficos de barras
-        
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
