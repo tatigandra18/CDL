@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 
 # Função para carregar e preparar os dados
 def load_and_prepare_data(url):
@@ -25,15 +26,15 @@ def load_and_prepare_data(url):
     
     return clean_data
 
-# Função para calcular desvios padrões
-def calculate_z_scores(data, columns):
-    mean_values = data[columns].mean()
-    std_values = data[columns].std()
+# Função para calcular desvios padrões globais
+def calculate_z_scores_global(data, columns):
+    overall_mean = data[columns].mean().mean()
+    overall_std = data[columns].stack().std()
     
-    z_scores = (data[columns] - mean_values) / std_values
+    z_scores = (data[columns] - overall_mean) / overall_std
     return z_scores
 
-# Função para criar gráfico de radar
+# Função para criar gráfico de radar com tamanho e margens ajustadas
 def radar_chart(z_scores_current, z_scores_desired, labels, title):
     fig = go.Figure()
 
@@ -41,34 +42,33 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title):
         r=z_scores_current,
         theta=labels,
         fill='toself',
-        name='Atual',
-        line=dict(color='blue')
+        name='Atual'
     ))
 
     fig.add_trace(go.Scatterpolar(
         r=z_scores_desired,
         theta=labels,
         fill='toself',
-        name='Desejado',
-        line=dict(color='green')
+        name='Desejado'
     ))
 
     fig.update_layout(
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[-3, 3],
-                dtick=0.5
-            )
-        ),
+                range=[-3, 3]
+            )),
+        showlegend=True,
         title=title,
-        showlegend=True
+        width=700,  # Ajuste do tamanho do gráfico de radar
+        height=700,
+        margin=dict(l=100, r=100, t=100, b=100)  # Ajuste das margens para evitar corte dos rótulos
     )
-
-    return fig
+    
+    st.plotly_chart(fig)
 
 # Título do app
-st.title('Análise de Cultura Organizacional com Z-Scores')
+st.title('Análise de Cultura Organizacional com Z-Scores Globais')
 
 # URL do arquivo raw no GitHub
 file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/OCAI/censo-estagios-2024-2.csv'
@@ -76,15 +76,15 @@ file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/O
 # Carregar e preparar os dados
 data = load_and_prepare_data(file_url)
 
-# Calcular z-scores globais (média de todos os funcionários e empresas)
+# Calcular z-scores globais para cada dimensão
 columns_current = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
 columns_desired = ['Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']
 
-z_scores_current = calculate_z_scores(data, columns_current)
-z_scores_desired = calculate_z_scores(data, columns_desired)
+z_scores_current = calculate_z_scores_global(data, columns_current)
+z_scores_desired = calculate_z_scores_global(data, columns_desired)
 
 # Implementando as abas
-tab1, tab2 = st.tabs(["Análise Individual", "Comparação entre Empresas"])
+tab1, tab2, tab3 = st.tabs(["Análise Individual", "Comparação entre Empresas", "Maiores Índices"])
 
 # Aba 1: Análise Individual
 with tab1:
@@ -103,10 +103,9 @@ with tab1:
         z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
         
         labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
-        title = f"Cultura Organizacional - {empresas} (Z-Scores)"
+        title = f"Cultura Organizacional - {empresas} (Z-Scores Globais)"
 
-        fig = radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title)
-        st.plotly_chart(fig)
+        radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title)
 
     # Exibir gráfico geral para empresa
     st.subheader('Diferença em Z-Scores - Média Geral da Empresa')
@@ -116,16 +115,15 @@ with tab1:
         z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
         z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
         
-        fig = radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores)")
-        st.plotly_chart(fig)
+        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores Globais)")
 
 # Aba 2: Comparação entre Empresas
 with tab2:
     st.subheader('Comparação entre Empresas')
 
-    empresas_unicas = sorted(data['Empresas'].unique())  # Ordena as empresas em ordem alfabética
+    empresas_unicas = sorted(data['Empresas'].unique())
 
-    for i, empresa in enumerate(empresas_unicas):  # Adicionar índice para chave única
+    for empresa in empresas_unicas:
         empresa_filtro = data[data['Empresas'] == empresa]
         
         if not empresa_filtro.empty:
@@ -133,7 +131,21 @@ with tab2:
             z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
             
             st.markdown(f"### {empresa}")
-            fig = radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores Globais)")
-            
-            # Adicionando uma chave única ao gráfico
-            st.plotly_chart(fig, key=f"radar_chart_{i}")
+            radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores Globais)")
+
+# Aba 3: Maiores Índices
+with tab3:
+    st.subheader("Maiores Índices por Elemento")
+    
+    elementos = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
+
+    for elemento in elementos:
+        maiores_empresas = data.groupby('Empresas')[elemento].mean().nlargest(10)
+        
+        fig = px.bar(maiores_empresas, x=maiores_empresas.index, y=maiores_empresas.values,
+                     labels={'x': 'Empresas', 'y': f'Média de {elemento}'},
+                     title=f'Maiores Índices de {elemento} (Atual)')
+        
+        fig.update_layout(width=900, height=500)  # Padronização do tamanho dos gráficos de barras
+        
+        st.plotly_chart(fig)
