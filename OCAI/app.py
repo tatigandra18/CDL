@@ -34,7 +34,7 @@ def calculate_z_scores(data, columns):
     z_scores = (data[columns] - mean_values) / std_values
     return z_scores
 
-# Função para criar gráfico de radar com tamanho e margens ajustadas
+# Função para criar gráfico de radar
 def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
     fig = go.Figure()
 
@@ -67,6 +67,20 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
     
     st.plotly_chart(fig, use_container_width=True, key=key)
 
+# Função para criar Contour Heatmap
+def contour_heatmap(data, x_col, y_col, z_col, title):
+    fig = go.Figure(
+        data=go.Contour(
+            x=data[x_col],
+            y=data[y_col],
+            z=data[z_col],
+            colorscale='Viridis',
+            contours=dict(showlabels=True)
+        )
+    )
+    fig.update_layout(title=title, xaxis_title=x_col, yaxis_title=y_col)
+    st.plotly_chart(fig, use_container_width=True)
+
 # Título do app
 st.title('Análise de Cultura Organizacional com Z-Scores')
 
@@ -84,22 +98,24 @@ z_scores_current = calculate_z_scores(data, columns_current)
 z_scores_desired = calculate_z_scores(data, columns_desired)
 
 # Implementando as abas
-tab1, tab2, tab3, tab4 = st.tabs([
-    "Análise Individual", "Comparação entre Empresas", "Maiores Índices", "Distribuição KDE"
-])
+tab1, tab2, tab3, tab4 = st.tabs(["Análise Individual", "Comparação entre Empresas", "Maiores Índices", "Mapa de Calor Contorno"])
 
 # Aba 1: Análise Individual
 with tab1:
     st.subheader('Análise por Empresa e Funcionário')
+
     empresas = st.selectbox("Selecione a Empresa", data['Empresas'].unique())
     funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == empresas]['Unnamed: 0'])
+    
     filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
 
     if not filtro.empty:
         z_scores_current_funcionario = z_scores_current.loc[filtro.index].values.flatten().tolist()
         z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
+        
         labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
         title = f"Cultura Organizacional - {empresas} (Z-Scores)"
+        
         radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title, key="radar_individual")
 
 # Aba 2: Comparação entre Empresas
@@ -124,9 +140,7 @@ with tab3:
                      title=f'Top 10 Empresas com Maiores Índices de {element.split("_")[0]}')
         st.plotly_chart(fig, use_container_width=True)
 
-# Aba 4: Distribuição KDE
+# Aba 4: Mapa de Calor Contorno
 with tab4:
-    st.subheader('Distribuição KDE por Dimensão Cultural')
-    dimension = st.selectbox("Selecione a Dimensão", columns_current)
-    fig = px.histogram(data, x=dimension, marginal="violin", nbins=20, title=f"Distribuição KDE de {dimension.split('_')[0]}")
-    st.plotly_chart(fig, use_container_width=True)
+    st.subheader('Mapa de Calor Contorno')
+    contour_heatmap(data, 'Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Distribuição Cultural')
