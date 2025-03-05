@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Função para carregar e preparar os dados
 def load_and_prepare_data(url):
@@ -26,56 +27,12 @@ def load_and_prepare_data(url):
 
     return clean_data
 
-# Função para calcular desvios padrões
-def calculate_z_scores(data, columns):
-    mean_values = data[columns].mean()
-    std_values = data[columns].std()
-
-    z_scores = (data[columns] - mean_values) / std_values
-    return z_scores
-
-# Função para criar gráfico de radar
-def radar_chart(z_scores_current, z_scores_desired, labels, title):
-    fig = go.Figure()
-
-    # Adicionando a série atual
-    fig.add_trace(go.Scatterpolar(
-        r=z_scores_current + z_scores_current[:1],
-        theta=labels + [labels[0]],
-        fill='toself',
-        name='Atual',
-        fillcolor='rgba(0, 102, 204, 0.25)',  # Azul claro
-        line=dict(color='blue', width=2)
-    ))
-
-    # Adicionando a série desejada
-    fig.add_trace(go.Scatterpolar(
-        r=z_scores_desired + z_scores_desired[:1],
-        theta=labels + [labels[0]],
-        fill='toself',
-        name='Desejado',
-        fillcolor='rgba(255, 0, 0, 0.25)',  # Laranja claro
-        line=dict(color='red', width=2)
-    ))
-
-    # Configurações do layout do gráfico
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(
-                range=[-3, 3],
-                tickvals=np.arange(-3, 3.5, 0.5),  # Alterando a escala para 0.5
-                title='Z-Scores',
-                tickfont=dict(size=12)
-            )
-        ),
-        showlegend=True,
-        title=title,
-        width=700,  # Ajuste do tamanho do gráfico de radar
-        height=700,
-        margin=dict(l=100, r=100, t=100, b=100)  # Ajuste das margens para evitar corte dos rótulos
-    )
-
-    st.plotly_chart(fig)
+# Função para criar um heatmap
+def plot_heatmap(data):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    sns.heatmap(data, annot=True, cmap="coolwarm", center=0, fmt=".2f", linewidths=0.5, ax=ax)
+    plt.title("Mapa de Calor das Preferências (Médias)")
+    st.pyplot(fig)
 
 # Título do app
 st.title('Análise de Cultura Organizacional com Z-Scores')
@@ -86,76 +43,44 @@ file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/O
 # Carregar e preparar os dados
 data = load_and_prepare_data(file_url)
 
-# Calcular z-scores para cada dimensão
-columns_current = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
-columns_desired = ['Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']
-
-z_scores_current = calculate_z_scores(data, columns_current)
-z_scores_desired = calculate_z_scores(data, columns_desired)
-
 # Implementando as abas
 tab1, tab2, tab3 = st.tabs(["Análise Individual", "Comparação entre Empresas", "Top 10 Empresas"])
 
-# Aba 1: Análise Individual
-with tab1:
-    st.subheader('Análise por Empresa e Funcionário')
-
-    # Filtros
-    empresas = st.selectbox("Selecione a Empresa", data['Empresas'].unique())
-    funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == empresas]['Unnamed: 0'])
-
-    # Filtrar os dados
-    filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
-
-    if not filtro.empty:
-        # Pegar z-scores para o funcionário selecionado
-        z_scores_current_funcionario = z_scores_current.loc[filtro.index].values.flatten().tolist()
-        z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
-
-        labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
-        title = f"Cultura Organizacional - {empresas} (Z-Scores)"
-
-        radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title)
-
-    # Exibir gráfico geral para empresa
-    st.subheader('Diferença em Z-Scores - Média Geral da Empresa')
-
-    empresa_filtro = data[data['Empresas'] == empresas]
-    if not empresa_filtro.empty:
-        z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
-        z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
-
-        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores)")
-
-# Aba 2: Comparação entre Empresas
-with tab2:
-    st.subheader('Comparação entre Empresas')
-
-    empresas_unicas = data['Empresas'].unique()
-
-    for empresa in sorted(empresas_unicas):  # Ordenando as empresas
-        empresa_filtro = data[data['Empresas'] == empresa]
-
-        if not empresa_filtro.empty:
-            z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
-            z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
-
-            radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores Globais)")
-
-# Aba 3: Top 10 Empresas
+# Aba 3: Top 10 Empresas + Heatmap Geral
 with tab3:
-    st.subheader('Top 10 Empresas com Maiores Índices')
+    st.subheader('Top 10 Empresas por Dimensões')
 
-    elements = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
-    for element in elements:
-        top_10 = data.groupby('Empresas')[element].mean().nlargest(10)
-        
-        fig = px.bar(top_10, x=top_10.index, y=top_10.values, labels={'y': 'Média', 'x': 'Empresa'},
-                     title=f'Top 10 Empresas com Maiores Índices de {element.split("_")[0]}')
+    # Calculando a média de cada dimensão
+    media_empresas = data.groupby('Empresas')[['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual',
+                                               'Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']].mean()
 
-        fig.update_layout(
-            width=800,  # Ajuste do tamanho do gráfico de barras
-            height=500
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+    # Encontrando as 10 maiores empresas para cada dimensão
+    top_10_cla = media_empresas['Clã_atual'].nlargest(10)
+    top_10_adh = media_empresas['Adhocracia_atual'].nlargest(10)
+    top_10_mer = media_empresas['Mercado_atual'].nlargest(10)
+    top_10_hie = media_empresas['Hierarquia_atual'].nlargest(10)
+
+    # Plotando os gráficos de barras
+    st.subheader("Top 10 Empresas - Clã")
+    st.bar_chart(top_10_cla)
+
+    st.subheader("Top 10 Empresas - Adhocracia")
+    st.bar_chart(top_10_adh)
+
+    st.subheader("Top 10 Empresas - Mercado")
+    st.bar_chart(top_10_mer)
+
+    st.subheader("Top 10 Empresas - Hierarquia")
+    st.bar_chart(top_10_hie)
+
+    # Mapa de Calor Geral
+    st.subheader("Mapa de Calor - Preferências Gerais do Grupo")
+
+    # Criar DataFrame com as médias gerais
+    media_geral = data[['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual',
+                         'Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']].mean()
+
+    # Converter para DataFrame para melhor visualização no heatmap
+    heatmap_data = pd.DataFrame(media_geral).T  # Transformar em tabela para heatmap
+
+    plot_heatmap(heatmap_data)
