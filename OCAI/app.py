@@ -60,9 +60,9 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
             )),
         showlegend=True,
         title=title,
-        width=700,  # Ajuste do tamanho do gráfico de radar
+        width=700,
         height=700,
-        margin=dict(l=100, r=100, t=100, b=100)  # Ajuste das margens para evitar corte dos rótulos
+        margin=dict(l=100, r=100, t=100, b=100)
     )
     
     st.plotly_chart(fig, use_container_width=True, key=key)
@@ -84,66 +84,49 @@ z_scores_current = calculate_z_scores(data, columns_current)
 z_scores_desired = calculate_z_scores(data, columns_desired)
 
 # Implementando as abas
-tab1, tab2, tab3 = st.tabs(["Análise Individual", "Comparação entre Empresas", "Maiores Índices"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Análise Individual", "Comparação entre Empresas", "Maiores Índices", "Distribuição KDE"
+])
 
 # Aba 1: Análise Individual
 with tab1:
     st.subheader('Análise por Empresa e Funcionário')
-
-    # Filtros
     empresas = st.selectbox("Selecione a Empresa", data['Empresas'].unique())
     funcionarios = st.selectbox("Selecione o Funcionário", data[data['Empresas'] == empresas]['Unnamed: 0'])
-
-    # Filtrar os dados
     filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
 
     if not filtro.empty:
-        # Pegar z-scores para o funcionário selecionado
         z_scores_current_funcionario = z_scores_current.loc[filtro.index].values.flatten().tolist()
         z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
-        
         labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
         title = f"Cultura Organizacional - {empresas} (Z-Scores)"
-
         radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title, key="radar_individual")
-
-    # Exibir gráfico geral para empresa
-    st.subheader('Diferença em Z-Scores - Média Geral da Empresa')
-    
-    empresa_filtro = data[data['Empresas'] == empresas]
-    if not empresa_filtro.empty:
-        z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
-        z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
-        
-        radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresas} (Z-Scores)", key="radar_empresa")
 
 # Aba 2: Comparação entre Empresas
 with tab2:
     st.subheader('Comparação entre Empresas')
-
     empresas_unicas = sorted(data['Empresas'].unique())
-
     for i, empresa in enumerate(empresas_unicas):
         empresa_filtro = data[data['Empresas'] == empresa]
-        
         if not empresa_filtro.empty:
             z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
             z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
-            
             st.markdown(f"### {empresa}")
             radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores Globais)", key=f"radar_chart_{i}")
 
 # Aba 3: Maiores Índices
 with tab3:
     st.subheader('Top 10 Empresas com Maiores Índices')
-
     elements = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
     for element in elements:
         top_10 = data.groupby('Empresas')[element].mean().nlargest(10)
-        
         fig = px.bar(top_10, x=top_10.index, y=top_10.values, labels={'y': 'Média', 'x': 'Empresa'},
                      title=f'Top 10 Empresas com Maiores Índices de {element.split("_")[0]}')
-
-        fig.update_layout(width=800, height=500)
-        
         st.plotly_chart(fig, use_container_width=True)
+
+# Aba 4: Distribuição KDE
+with tab4:
+    st.subheader('Distribuição KDE por Dimensão Cultural')
+    dimension = st.selectbox("Selecione a Dimensão", columns_current)
+    fig = px.histogram(data, x=dimension, marginal="violin", nbins=20, title=f"Distribuição KDE de {dimension.split('_')[0]}")
+    st.plotly_chart(fig, use_container_width=True)
