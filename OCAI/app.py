@@ -26,7 +26,7 @@ def load_and_prepare_data(url):
     
     return clean_data
 
-# Função para calcular desvios padrões
+# Função para calcular desvios padrões (z-scores)
 def calculate_z_scores(data, columns):
     mean_values = data[columns].mean()
     std_values = data[columns].std()
@@ -35,11 +35,11 @@ def calculate_z_scores(data, columns):
     return z_scores
 
 # Função para criar gráfico de radar com cores ajustadas
-def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
+def radar_chart(values_current, values_desired, labels, title, key=None):
     fig = go.Figure()
 
     fig.add_trace(go.Scatterpolar(
-        r=z_scores_current,
+        r=values_current,
         theta=labels,
         fill='toself',
         name='Atual',
@@ -47,7 +47,7 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
     ))
 
     fig.add_trace(go.Scatterpolar(
-        r=z_scores_desired,
+        r=values_desired,
         theta=labels,
         fill='toself',
         name='Desejado',
@@ -58,7 +58,7 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[-3, 3]
+                range=[0, 5]  # Ajuste do intervalo para os valores brutos
             )),
         showlegend=True,
         title=title,
@@ -70,7 +70,7 @@ def radar_chart(z_scores_current, z_scores_desired, labels, title, key=None):
     st.plotly_chart(fig, use_container_width=True, key=key)
 
 # Título do app
-st.title('Análise de Cultura Organizacional com Z-Scores')
+st.title('Análise de Cultura Organizacional com Dados Brutos')
 
 # URL do arquivo raw no GitHub
 file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/OCAI/censo-estagios-2024-2.csv'
@@ -78,7 +78,7 @@ file_url = 'https://raw.githubusercontent.com/tatigandra18/CDL/refs/heads/main/O
 # Carregar e preparar os dados
 data = load_and_prepare_data(file_url)
 
-# Calcular z-scores para cada dimensão
+# Calcular z-scores para cada dimensão (não será mais usado, mas mantido para referência)
 columns_current = ['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']
 columns_desired = ['Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']
 
@@ -98,13 +98,14 @@ with tab1:
     filtro = data[(data['Empresas'] == empresas) & (data['Unnamed: 0'] == funcionarios)]
 
     if not filtro.empty:
-        z_scores_current_funcionario = z_scores_current.loc[filtro.index].values.flatten().tolist()
-        z_scores_desired_funcionario = z_scores_desired.loc[filtro.index].values.flatten().tolist()
+        # Utilizando os dados brutos em vez dos z-scores
+        values_current_funcionario = filtro[columns_current].values.flatten().tolist()
+        values_desired_funcionario = filtro[columns_desired].values.flatten().tolist()
         
         labels = ['Clã', 'Adhocracia', 'Mercado', 'Hierarquia']
-        title = f"Cultura Organizacional - {empresas} (Z-Scores)"
+        title = f"Cultura Organizacional - {empresas}"
 
-        radar_chart(z_scores_current_funcionario, z_scores_desired_funcionario, labels, title, key="radar_individual")
+        radar_chart(values_current_funcionario, values_desired_funcionario, labels, title, key="radar_individual")
 
 # Aba 2: Comparação entre Empresas
 with tab2:
@@ -115,11 +116,12 @@ with tab2:
         empresa_filtro = data[data['Empresas'] == empresa]
         
         if not empresa_filtro.empty:
-            z_scores_current_avg = z_scores_current.loc[empresa_filtro.index].mean().values.tolist()
-            z_scores_desired_avg = z_scores_desired.loc[empresa_filtro.index].mean().values.tolist()
+            # Utilizando os dados brutos em vez dos z-scores
+            values_current_avg = empresa_filtro[columns_current].mean().values.tolist()
+            values_desired_avg = empresa_filtro[columns_desired].mean().values.tolist()
             
             st.markdown(f"### {empresa}")
-            radar_chart(z_scores_current_avg, z_scores_desired_avg, labels, f"Média Geral - {empresa} (Z-Scores)", key=f"radar_chart_{i}")
+            radar_chart(values_current_avg, values_desired_avg, labels, f"Média Geral - {empresa}", key=f"radar_chart_{i}")
 
 # Aba 3: Maiores Índices
 with tab3:
@@ -137,4 +139,9 @@ with tab3:
 # Aba 4: Radar Geral
 with tab4:
     st.subheader('Radar Geral de Todos os Alunos')
-    radar_chart(z_scores_current.mean().values.tolist(), z_scores_desired.mean().values.tolist(), labels, "Radar Geral - Todos os Alunos", key="radar_geral")
+
+    # Utilizar os dados brutos em vez dos z-scores
+    current_values = data[['Clã_atual', 'Adhocracia_atual', 'Mercado_atual', 'Hierarquia_atual']].mean().values.tolist()
+    desired_values = data[['Clã_desejado', 'Adhocracia_desejado', 'Mercado_desejado', 'Hierarquia_desejado']].mean().values.tolist()
+
+    radar_chart(current_values, desired_values, labels, "Radar Geral - Todos os Alunos", key="radar_geral")
